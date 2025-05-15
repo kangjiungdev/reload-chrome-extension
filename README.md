@@ -5,6 +5,8 @@ chrome extension reloader program made with golang
 ### 확장프로그램 background.js 예시
 
 ```js
+const serverPort = 서버포트;
+
 let lastTimestamp = null;
 let waiting = false;
 
@@ -13,10 +15,10 @@ async function checkChangeEventRequest() {
   waiting = true;
 
   try {
-    const res = await fetch("http://localhost:1234/", {
+    const res = await fetch(`http://localhost:${serverPort}/`, {
       method: "GET",
       headers: {
-        Accept: "application/json", // 또는 원하는 커스텀 값
+        Accept: "application/json",
       },
     });
     if (res.ok) {
@@ -25,7 +27,7 @@ async function checkChangeEventRequest() {
         .map((dateStr) => new Date(dateStr))
         .reduce((max, curr) => (curr > max ? curr : max));
 
-      if (latestDate?.getTime() !== lastTimestamp?.getTime()) {
+      if (latestDate !== lastTimestamp) {
         console.log("변경 감지됨. 리로드 실행");
         lastTimestamp = latestDate;
         chrome.runtime.reload();

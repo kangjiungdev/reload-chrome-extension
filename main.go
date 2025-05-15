@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -27,25 +28,31 @@ func isDebounced(path string) bool {
 	return false
 }
 
-func getPath() string {
+func checkBigErr(err error) {
+	if err != nil {
+		log.Fatal("error:", err)
+	}
+}
+
+func getSetting() (string, string) {
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print("확장 프로그램 폴더 경로를 입력해 주세요: ")
 	path, err := reader.ReadString('\n')
-	if err != nil {
-		fmt.Println("error:", err)
-	}
+	checkBigErr(err)
 	path = strings.TrimSpace(path)
-	fmt.Println(path)
-	if strings.HasPrefix(path, "../") {
-		return path
+	if !strings.HasPrefix(path, "../") {
+		path = "../" + path
 	}
-	path = fmt.Sprintf("../%s", path)
 	fmt.Println(path)
-	return path
+	fmt.Print("서버 실행 포트를 입력해 주세요: ")
+	name, err := reader.ReadString('\n')
+	checkBigErr(err)
+	name = strings.TrimSpace(name)
+	return path, name
 }
 
 func main() {
-	dir := getPath()
+	dir, port := getSetting()
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Fatal(err)
@@ -60,8 +67,19 @@ func main() {
 	http.HandleFunc("/", func(res http.ResponseWriter, req *http.Request) {
 		checkFolderEvent(dir, watcher, res, req)
 	})
-	http.ListenAndServe(":1234", nil)
-	fmt.Println("server start")
+	// 서버 실행 가능한지 미리 확인. 이렇게 안하면 server start on이 서버가 실행됐을 때만 출력되게 할 수 없음. Serve 실행되면 서버 요청 처리하느라 밑에 코드까지 도달 못함.
+	ln, err := net.Listen("tcp", ":"+port)
+	if err != nil {
+		fmt.Println("error: 올바른 포트를 입력해 주세요")
+		return
+	}
+	fmt.Println("server start on :" + port)
+
+	// 실제 서버 실행
+	err = http.Serve(ln, nil)
+	if err != nil {
+		fmt.Println("server stopped with error:", err)
+	}
 }
 
 func checkFolderEvent(dir string, watcher *fsnotify.Watcher, res http.ResponseWriter, req *http.Request) {
