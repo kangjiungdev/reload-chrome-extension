@@ -89,6 +89,10 @@ func checkFolderEvent(dir string, watcher *fsnotify.Watcher, res http.ResponseWr
 		return
 	}
 
+	res.Header().Set("Access-Control-Allow-Origin", "*")
+	res.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+	res.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
 	log.Println("Watching directory:", dir)
 
 	for {
